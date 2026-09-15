@@ -253,6 +253,11 @@ async function initCloud(){
   }catch(err){
     console.error("Firebase initialization failed:", err);
     cloudReady = false;
+    const status=document.getElementById("cloudStatus");
+    if(status){
+      status.textContent="⚠️ Firebase indisponible — "+(err?.code || err?.message || "erreur");
+      status.style.color="#b42318";
+    }
   }
 }
 
@@ -263,34 +268,33 @@ async function loadScores(){
   if(cloudReady){
     try{
       const {db,collection,query,orderBy,limit,getDocs}=window.QAADA_DB;
-      const q=query(collection(db,"puzzle_scores"),orderBy("seconds","asc"),limit(25));
+      // Public leaderboard: contains only safe public fields (no email).
+      const q=query(collection(db,"leaderboard"),orderBy("seconds","asc"),limit(25));
       const snap=await getDocs(q);
       box.innerHTML="";
       if(snap.empty){
         box.innerHTML='<div style="color:#8b776b;font-size:13px">لا توجد نتائج بعد.</div>';
         return;
       }
-      let rank=1;
-      snap.forEach(doc=>{
-        const s=doc.data();
-        if(s.verificationStatus !== "verified") return;
-        const d=document.createElement('div');
-        d.className='lbrow';
-        d.innerHTML=`<span>${rank++}. ${escapeHtml(s.name || "Joueur")}</span><b>${formatTime(s.seconds || 0)}</b>`;
+      snap.forEach((docSnap,i)=>{
+        const s=docSnap.data();
+        const d=document.createElement('div');d.className='lbrow';
+        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name||'Joueur')}</span><b>${formatTime(Number(s.seconds)||0)}</b>`;
         box.appendChild(d);
       });
-      if(!box.children.length) box.innerHTML='<div style="color:#8b776b;font-size:13px">لا توجد نتائج بعد.</div>';
       return;
     }catch(err){
-      console.error("Could not load cloud scores:",err);
+      console.error("Could not load public leaderboard:",err);
+      box.innerHTML='<div style="color:#b42318;font-size:13px">⚠️ Firebase connecté mais impossible de charger les résultats. Vérifiez les règles Firestore pour <b>leaderboard</b>.</div>';
+      return;
     }
   }
 
-  // Offline fallback: local scores until Firebase is configured.
+  // Offline fallback only when Firebase itself is unavailable.
   const scores=JSON.parse(localStorage.getItem('qaadaScores')||'[]');
   box.innerHTML='';
   if(!scores.length){
-    box.innerHTML='<div style="color:#8b776b;font-size:13px">Firebase غير مفعّل — هذه نسخة تجريبية محلية.</div>';
+    box.innerHTML='<div style="color:#8b776b;font-size:13px">Firebase non disponible — mode local.</div>';
     return;
   }
   scores.slice(0,5).forEach((s,i)=>{
@@ -339,6 +343,16 @@ async function submitScore(){
         verificationStatus:"verified",
         completedAt:serverTimestamp()
       });
+      // Publish a safe public result without exposing the player's email.
+      await addDoc(collection(db,"leaderboard"),{
+        name,
+        seconds:officialSeconds,
+        moves,
+        puzzleId:currentPuzzleId,
+        verificationStatus:"verified",
+        completedAt:serverTimestamp()
+      });
+
       await updateDoc(doc(db,"puzzle_attempts",currentAttemptId),{
         status:"submitted",
         name,
