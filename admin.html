@@ -50,7 +50,7 @@ button{border:0;border-radius:11px;padding:12px 16px;font-weight:800;cursor:poin
 
   <section class="card">
     <div class="controls">
-      <input id="search" placeholder="🔎 Rechercher par nom ou Email">
+      <input id="search" placeholder="🔎 Rechercher par Instagram">
       <button id="refresh" class="gold">Actualiser</button>
       <button id="csv" class="primary">Exporter CSV</button>
     </div>
@@ -60,8 +60,8 @@ button{border:0;border-radius:11px;padding:12px 16px;font-weight:800;cursor:poin
   <section class="card">
     <div class="tablewrap">
       <table>
-        <thead><tr><th>#</th><th>Nom</th><th>Email</th><th>Temps</th><th>Mouvements</th><th>Statut</th><th>Participation</th></tr></thead>
-        <tbody id="rows"><tr><td colspan="7">Chargement...</td></tr></tbody>
+        <thead><tr><th>#</th><th>Instagram</th><th>Temps</th><th>Mouvements</th><th>Statut</th><th>Participation</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6">Chargement...</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -152,7 +152,7 @@ async function loadScores(){
     const msg = (e && e.code === "permission-denied")
       ? "Accès refusé : ce compte Firebase n’a pas encore le rôle admin."
       : "Erreur : " + (e?.message || e);
-    $("rows").innerHTML=`<tr><td colspan="7">${esc(msg)}</td></tr>`;
+    $("rows").innerHTML=`<tr><td colspan="6">${esc(msg)}</td></tr>`;
   }
 }
 
@@ -166,8 +166,7 @@ function statusBadge(s){
 function render(){
   const q=$("search").value.trim().toLowerCase();
   const filtered=allScores.filter(s=>
-    String(s.name||"").toLowerCase().includes(q) ||
-    String(s.email||"").toLowerCase().includes(q)
+    String(s.instagram||s.name||"").toLowerCase().includes(q)
   );
   $("count").textContent=filtered.length;
   const verified=allScores.filter(s=>s.verificationStatus==="verified");
@@ -177,11 +176,11 @@ function render(){
   $("best").textContent=verified.length?fmt(verified[0].seconds):"—";
 
   const rows=$("rows");rows.innerHTML="";
-  if(!filtered.length){rows.innerHTML='<tr><td colspan="7">Aucun résultat.</td></tr>';return}
+  if(!filtered.length){rows.innerHTML='<tr><td colspan="6">Aucun résultat.</td></tr>';return}
   filtered.forEach((s,i)=>{
     const tr=document.createElement("tr");
     tr.innerHTML=`<td class="rank">${i<3?["🥇","🥈","🥉"][i]:(i+1)}</td>
-      <td>${esc(s.name||"—")}</td><td>${esc(s.email||"—")}</td>
+      <td>${esc(s.instagram||"—")}</td>
       <td><b>${fmt(s.seconds)}</b></td><td>${Number(s.moves||0)}</td>
       <td>${statusBadge(s)}</td>
       <td>${s.completedAt?.seconds?new Date(s.completedAt.seconds*1000).toLocaleString():"—"}</td>`;
@@ -191,10 +190,10 @@ function render(){
 
 function exportCSV(){
   const q=$("search").value.trim().toLowerCase();
-  const data=allScores.filter(s=>String(s.name||"").toLowerCase().includes(q)||String(s.email||"").toLowerCase().includes(q));
-  const header=["Rank","Name","Email","Seconds","Time","Moves","Status","Puzzle","Attempt ID"];
+  const data=allScores.filter(s=>String(s.instagram||"").toLowerCase().includes(q));
+  const header=["Rank","Instagram","Seconds","Time","Moves","Status","Puzzle","Attempt ID"];
   const lines=[header,...data.map((s,i)=>[
-    i+1,s.name||"",s.email||"",s.seconds||"",fmt(s.seconds),s.moves||"",s.verificationStatus||"pending",s.puzzleId||"",s.attemptId||""
+    i+1,s.instagram||"",s.seconds||"",fmt(s.seconds),s.moves||"",s.verificationStatus||"pending",s.puzzleId||"",s.attemptId||""
   ])];
   const csv=lines.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\\n");
   const blob=new Blob(["\\ufeff"+csv],{type:"text/csv;charset=utf-8"});

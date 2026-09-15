@@ -48,9 +48,9 @@ input{width:100%;padding:12px;border:1px solid #d7c5af;border-radius:11px;font-s
     <div>لقد أكملت الصورة بنجاح.</div>
     <strong id="finalTime"></strong>
     <input id="playerName" placeholder="Votre nom" maxlength="40">
-    <input id="playerEmail" type="email" placeholder="Votre adresse email" maxlength="120" autocomplete="email">
+    <input id="playerInstagram" type="text" placeholder="Votre nom Instagram" maxlength="40" autocomplete="off">
     <button id="save" style="background:#ed1f24;color:white">Enregistrer ma participation</button>
-    <div style="font-size:11px;color:#8b776b;margin-top:8px">Votre nom et votre email sont utilisés pour enregistrer votre participation au challenge. Les résultats en ligne sont vérifiés côté serveur.</div>
+    <div style="font-size:11px;color:#8b776b;margin-top:8px">Votre nom Instagram est utilisé pour enregistrer votre participation au challenge. Les résultats en ligne sont vérifiés côté serveur.</div>
   </div>
 </section>
 
@@ -283,12 +283,12 @@ async function loadScores(){
         const secondsValue = Number.isFinite(rawSeconds) && rawSeconds >= 0 ? rawSeconds : NaN;
         if(!Number.isFinite(secondsValue)) return;
         entries.push({
-          name: String(s.name || 'Joueur'),
+          instagram: String(s.instagram || 'Joueur'),
           seconds: Math.floor(secondsValue),
           moves: Number.isFinite(Number(s.moves)) ? Number(s.moves) : 999999
         });
       });
-      entries.sort((a,b)=>a.seconds-b.seconds || a.moves-b.moves || a.name.localeCompare(b.name,'fr'));
+      entries.sort((a,b)=>a.seconds-b.seconds || a.moves-b.moves || a.instagram.localeCompare(b.instagram,'fr'));
 
       box.innerHTML="";
       if(!entries.length){
@@ -299,7 +299,7 @@ async function loadScores(){
       entries.slice(0,5).forEach((s,i)=>{
         const d=document.createElement('div');
         d.className='lbrow';
-        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name)}</span><b>${formatTime(s.seconds)}</b>`;
+        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.instagram)}</span><b>${formatTime(s.seconds)}</b>`;
         box.appendChild(d);
       });
       return;
@@ -324,7 +324,7 @@ async function loadScores(){
   validScores.slice(0,5).forEach((s,i)=>{
     const d=document.createElement('div');
     d.className='lbrow';
-    d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name || 'Joueur')}</span><b>${formatTime(s.raw)}</b>`;
+    d.innerHTML=`<span>${i+1}. ${escapeHtml(s.instagram || 'Joueur')}</span><b>${formatTime(s.raw)}</b>`;
     box.appendChild(d);
   });
 }
@@ -336,14 +336,14 @@ function escapeHtml(s){
 
 async function submitScore(){
   const name=document.getElementById('playerName').value.trim();
-  const email=document.getElementById('playerEmail').value.trim();
+  const instagram=document.getElementById('playerInstagram').value.trim();
 
-  if(!name){
-    alert("Veuillez saisir votre nom.");
+  if(!instagram){
+    alert("Veuillez saisir votre nom Instagram.");
     return;
   }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    alert("Veuillez saisir une adresse email valide.");
+  if(instagram.length < 2){
+    alert("Veuillez saisir un nom Instagram valide.");
     return;
   }
 
@@ -360,8 +360,7 @@ async function submitScore(){
         attemptId:currentAttemptId,
         playerUid:currentUser.uid,
         puzzleId:currentPuzzleId,
-        name,
-        email,
+        instagram,
         seconds:officialSeconds,
         moves,
         verificationStatus:"verified",
@@ -380,8 +379,7 @@ async function submitScore(){
 
       await updateDoc(doc(db,"puzzle_attempts",currentAttemptId),{
         status:"submitted",
-        name,
-        email,
+        instagram,
         seconds:officialSeconds,
         moves,
         scoreId:scoreRef.id,
@@ -393,7 +391,7 @@ async function submitScore(){
     }else{
       // Local fallback.
       const scores=JSON.parse(localStorage.getItem('qaadaScores')||'[]');
-      scores.push({name,email,time:formatTime(officialSeconds),raw:officialSeconds,moves});
+      scores.push({instagram,time:formatTime(officialSeconds),raw:officialSeconds,moves});
       scores.sort((a,b)=>a.raw-b.raw||a.moves-b.moves);
       localStorage.setItem('qaadaScores',JSON.stringify(scores.slice(0,20)));
       await loadScores();
@@ -402,7 +400,7 @@ async function submitScore(){
     }
 
     document.getElementById('playerName').value='';
-    document.getElementById('playerEmail').value='';
+    document.getElementById('playerInstagram').value='';
     saveBtn.textContent="Participation envoyée ✓";
   }catch(err){
     console.error(err);
