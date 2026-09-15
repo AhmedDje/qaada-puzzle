@@ -345,6 +345,7 @@ async function submitScore(){
       });
       // Publish a safe public result without exposing the player's email.
       await addDoc(collection(db,"leaderboard"),{
+        playerUid: currentUser.uid,
         name,
         seconds:officialSeconds,
         moves,
