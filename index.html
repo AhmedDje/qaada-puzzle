@@ -47,10 +47,9 @@ input{width:100%;padding:12px;border:1px solid #d7c5af;border-radius:11px;font-s
     <h2>🎉 Bravo !</h2>
     <div>لقد أكملت الصورة بنجاح.</div>
     <strong id="finalTime"></strong>
-    <input id="playerName" placeholder="Votre nom" maxlength="40">
-    <input id="playerInstagram" type="text" placeholder="Votre nom Instagram" maxlength="40" autocomplete="off">
+    <input id="playerInstagram" type="text" placeholder="Votre instagram" maxlength="40" autocomplete="off">
     <button id="save" style="background:#ed1f24;color:white">Enregistrer ma participation</button>
-    <div style="font-size:11px;color:#8b776b;margin-top:8px">Votre nom Instagram est utilisé pour enregistrer votre participation au challenge. Les résultats en ligne sont vérifiés côté serveur.</div>
+    <div style="font-size:11px;color:#8b776b;margin-top:8px">Votre instagram est utilisé pour enregistrer votre participation au challenge.</div>
   </div>
 </section>
 
@@ -299,7 +298,7 @@ async function loadScores(){
       entries.slice(0,5).forEach((s,i)=>{
         const d=document.createElement('div');
         d.className='lbrow';
-        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.instagram)}</span><b>${formatTime(s.seconds)}</b>`;
+        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.instagram || 'Joueur')}</span><b>${formatTime(s.seconds)}</b>`;
         box.appendChild(d);
       });
       return;
@@ -335,15 +334,14 @@ function escapeHtml(s){
 }
 
 async function submitScore(){
-  const name=document.getElementById('playerName').value.trim();
   const instagram=document.getElementById('playerInstagram').value.trim();
 
   if(!instagram){
-    alert("Veuillez saisir votre nom Instagram.");
+    alert("Veuillez saisir votre instagram.");
     return;
   }
   if(instagram.length < 2){
-    alert("Veuillez saisir un nom Instagram valide.");
+    alert("Veuillez saisir un instagram valide.");
     return;
   }
 
@@ -366,10 +364,10 @@ async function submitScore(){
         verificationStatus:"verified",
         completedAt:serverTimestamp()
       });
-      // Publish a safe public result without exposing the player's email.
+      // Publish the participant Instagram for the leaderboard.
       await addDoc(collection(db,"leaderboard"),{
         playerUid: currentUser.uid,
-        name,
+        instagram,
         seconds:officialSeconds,
         moves,
         puzzleId:currentPuzzleId,
@@ -399,7 +397,6 @@ async function submitScore(){
       <span style="font-size:13px">Mode local : configurez Firebase pour une vraie compétition.</span>`;
     }
 
-    document.getElementById('playerName').value='';
     document.getElementById('playerInstagram').value='';
     saveBtn.textContent="Participation envoyée ✓";
   }catch(err){
