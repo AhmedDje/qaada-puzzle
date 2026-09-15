@@ -268,42 +268,62 @@ async function loadScores(){
   if(cloudReady){
     try{
       const {db,collection,query,orderBy,limit,getDocs}=window.QAADA_DB;
-      // Public leaderboard: contains only safe public fields (no email).
-      const q=query(collection(db,"leaderboard"),orderBy("seconds","asc"),limit(25));
+      // Read a few extra entries, normalize them, sort client-side, then show only the best 5.
+      // This also protects the UI from older/malformed leaderboard documents.
+      const q=query(collection(db,"leaderboard"),orderBy("seconds","asc"),limit(50));
       const snap=await getDocs(q);
+      const entries=[];
+      snap.forEach(docSnap=>{
+        const s=docSnap.data() || {};
+        const rawSeconds = Number(s.seconds);
+        const secondsValue = Number.isFinite(rawSeconds) && rawSeconds >= 0 ? rawSeconds : NaN;
+        if(!Number.isFinite(secondsValue)) return;
+        entries.push({
+          name: String(s.name || 'Joueur'),
+          seconds: Math.floor(secondsValue),
+          moves: Number.isFinite(Number(s.moves)) ? Number(s.moves) : 999999
+        });
+      });
+      entries.sort((a,b)=>a.seconds-b.seconds || a.moves-b.moves || a.name.localeCompare(b.name,'fr'));
+
       box.innerHTML="";
-      if(snap.empty){
+      if(!entries.length){
         box.innerHTML='<div style="color:#8b776b;font-size:13px">لا توجد نتائج بعد.</div>';
         return;
       }
-      snap.forEach((docSnap,i)=>{
-        const s=docSnap.data();
-        const d=document.createElement('div');d.className='lbrow';
-        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name||'Joueur')}</span><b>${formatTime(Number(s.seconds)||0)}</b>`;
+
+      entries.slice(0,5).forEach((s,i)=>{
+        const d=document.createElement('div');
+        d.className='lbrow';
+        d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name)}</span><b>${formatTime(s.seconds)}</b>`;
         box.appendChild(d);
       });
       return;
     }catch(err){
       console.error("Could not load public leaderboard:",err);
-      box.innerHTML='<div style="color:#b42318;font-size:13px">⚠️ Firebase connecté mais impossible de charger les résultats. Vérifiez les règles Firestore pour <b>leaderboard</b>.</div>';
+      box.innerHTML='<div style="color:#b42318;font-size:13px">⚠️ Firebase متصل لكن تعذر تحميل النتائج. تحقق من قواعد Firestore لـ leaderboard.</div>';
       return;
     }
   }
 
   // Offline fallback only when Firebase itself is unavailable.
   const scores=JSON.parse(localStorage.getItem('qaadaScores')||'[]');
+  const validScores=scores
+    .map(s=>({...s,raw:Number(s.raw)}))
+    .filter(s=>Number.isFinite(s.raw) && s.raw>=0)
+    .sort((a,b)=>a.raw-b.raw || Number(a.moves||999999)-Number(b.moves||999999));
   box.innerHTML='';
-  if(!scores.length){
+  if(!validScores.length){
     box.innerHTML='<div style="color:#8b776b;font-size:13px">Firebase non disponible — mode local.</div>';
     return;
   }
-  scores.slice(0,5).forEach((s,i)=>{
-    const d=document.createElement('div');d.className='lbrow';
-    d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name)}</span><b>${s.time}</b>`;
+  validScores.slice(0,5).forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='lbrow';
+    d.innerHTML=`<span>${i+1}. ${escapeHtml(s.name || 'Joueur')}</span><b>${formatTime(s.raw)}</b>`;
     box.appendChild(d);
   });
 }
-
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g,c=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
