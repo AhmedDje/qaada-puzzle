@@ -351,7 +351,7 @@ async function submitScore(){
     if(cloudReady){
       if(!currentAttemptId || !currentUser) throw new Error("Aucune tentative en ligne n'a été créée.");
       const {db,collection,addDoc,serverTimestamp,doc,updateDoc}=window.QAADA_DB;
-      const officialSeconds=Math.max(0,Math.floor((Date.now()-attemptStartedAt)/1000));
+      const officialSeconds=Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
       const scoreRef=await addDoc(collection(db,"puzzle_scores"),{
         attemptId:currentAttemptId,
         playerUid:currentUser.uid,
